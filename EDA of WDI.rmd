@@ -1,0 +1,1540 @@
+---
+title: "World Development Indicators"
+author: "Kedar Deodhar, Prateek Rajput"
+date: "18/12/2020"
+output: html_document
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+<center> <h1 style="color:grey; font-size:300%"> Abstract </h1> </center>
+
+This is an exploratory data analysis of the World Development Indicators dataset. [1] The dataset has a variety of data from different domains such as economic policies of a country, poverty, education, infrastructure and technology, healthcare. Our goal was to evaluate performance of countries the best we could, see if there are certain countries that have significantly been able to change their results and try to find out if any identifiable reasons for that exist. As a goal, we tried to see if there are some controllable factors like government expenditure which generally result in human prosperity or better life quality. We tried to find out which specific policy decisions, societal norms or perception of people is the difference between developed countries and developing countries. In order to check the overall importance of an indicator in the quality of living in a country, we analyzed developed nations with a focus on US and Canada and their comparison. To find the differentiating factors between developing and developed countries, we used India as an example of a developing nation. In the end, we did find some indicators that are related to indicators in seemingly other domains.  The results could potentially serve as a guide to the actions that can be taken by governments for betterment of quality of life.     
+
+<center> <h1 style="color:grey; font-size:300%"> Table of content </h1> </center>
+
+<ol>
+  <li> <a href=#intro> Introduction </a> </li>
+  <li> <a href=#prior_research>Prior Research </a></li>
+  <li> <a href=#exp_results> Experiments and results </a> <ol>
+    <li> <a href=#health> Health </a></li>
+    <li> <a href=#economy> Economy </a></li>
+    <li> <a href=#education> Education </a></li>
+    <li> <a href=#infra> Infrastructure </a></li>
+    <li> <a href=#pub_private> Public and private sector </a></li>
+    <li> <a href=#pred_gdp> Predictors of GDP </a></li>
+    <li> <a href=#pred_happiness> Predictors of Happiness </a></li>
+       </ol>
+  </li>
+  <li> <a href=#limitations_future_work> Limitations and future work </a></li>
+  <li> <a href=#references> References </a></li>
+</ol>
+
+<center> <h1 style="color:grey; font-size:300%" id="intro"> Introduction </h1> </center>
+
+The reason behind the choice of this dataset is the variety of data it provided. The fact that the dataset had covered all the aspects of human life, especially Economy, Health and Education made it worth exploring. To get better insights on our findings, we also added the data we collected from Happiness Index Report [2]. The data from the World Development Indicators dataset helped us in understanding the objective, measurable elements of human development, but we also wanted to see how well how well some subjective, self-identified factors such as self-described happiness, perception of freedom, corruption, generosity depend on the objective measures of well being. 
+The project was a great opportunity for us to dive deep into all the aspects of data science. Data manipulation, Statistical Analyses, Machine Learning and Data Visualization. Statistical Analysis on the data was a crucial part for us since both of us are from Computer science background. We tried to be as thorough as we could in the statistical analysis part by analyzing our Hypothesis Test results deeply, checking for significance or magnitude of the results by running post-hoc tests. Visualization was another challenge for us because our project is data driven which makes representation of data really important. We tried to find best possible diagrams and tools that make it easy to interpret the information. We also familiarized ourselves with the concept of Time Series Analysis. Although we had learnt these things to one extent or another throughout the Big Data program, the project enhanced our knowledge about them and helped us learn how to put our knowledge into practice. Applying these methods to a real world problem, the WDI dataset, gave us a chance to learn and overcome the problems we faced while implementing them while simultaneously getting to know a lot about the problems faced by many countries and their possible solutions.
+There was some work that we did which ended up being insignificant. This echos either models that failed, tests that did not give expected or significant results, or results that we could not be sure about. We have added all of this in the Appendix part.
+
+<center> <h1 style="color:grey; font-size:300%" id="prior_research"> Prior Research </h1> </center>
+
+We looked for related work done by others on this dataset. There was not much that was done to comprehensively cover the entire dataset, but we found some interesting studies done on specific parts of the dataset.
+
+This study [3] by Krishna Ravikumar is a comparison between India and China’s development indicators on the same database. The focus was on some economic indicators such as GDP, Trade and import export as well as life expectancy and literacy rate. The conclusion was that China is ahead of India in most indicators. India’s lag from China was between 10 to 25 years depending on the indicator. The stated result was that India is that many years behind China in those indicators. This seemed like a too simplistic way to draw a conclusion and it was based on minimal data. However, the approach taken was 	novel, the visualization was good, and the overall idea seemed interesting.
+
+This study [4] by itssangeeta tries to explore global wealth inequality and growth over the years. It has some great observations about how far countries have come from 1960. It provides insightful information about countries that have been consistently poor or rich, countries that are emerging, and countries that stand out in terms of accumulation of wealth, average income or wealth distribution. The comparison it attempts to do is interesting, but it sometimes fails to recognize missing data at some points, specially in the earlier years, which sometimes makes the outcome of the graph look a bit contextless. Yet, there were some interesting observations and based on that they went deep into interesting specifics. 
+
+From these projects, we picked up how to roughly observe outliers or significant deviations from ordinary and then try to find out more about them. These projects don’t go into any further statistical analyses or Machine learning. We wanted to do that but there was something to be gained from these projects about what things can be tried to find interesting trends and how to focus on interesting specifics which we could then analyse further.
+
+<center> <h1 style="color:grey; font-size:300%" id="exp_results"> Experiment and results </h1> </center>
+
+```{r include=FALSE} 
+#Imoprting libraries
+
+library(tidyverse)
+library(rstatix)
+library(forecast)
+library(gganimate)
+library(gridExtra)
+```
+
+```{r include= FALSE, warning=FALSE, message=FALSE}
+#Importing Data
+
+data = read_csv("WDIData.csv")
+data_gathered <- data %>% gather(key="year",value = "value",-`Country Name`,-`Country Code`,-`Indicator Name`,-`Indicator Code`)
+data_proper <- data_gathered %>% select(-`Country Code`,-`Indicator Name`) %>% spread(`Indicator Code`,`value`)
+data_proper_all <- data_gathered %>% select(-`Country Code`,-`Indicator Name`) %>% spread(`Indicator Code`,`value`)
+
+#developed countries
+country_names<- c("Norway","Switzerland","Ireland","Germany", "Hong Kong SAR, China
+", "Australia", "Iceland", "Sweden", "Singapore", "Netherlands", "Denmark", "Finland", "Canada",
+"New Zealand", "United Kingdom", "United States", "Belgium", "Liechtenstein", "Japan", "Austria","World")
+#length(country_names)
+developed_countries<-data_proper %>% filter(`Country Name` %in% country_names)
+
+
+```
+
+
+```{r echo= FALSE, warning=FALSE, message=FALSE}
+non_country_names <- c("World", "High income", "OECD members", "Post-demographic dividend",
+"IDA & IBRD total", "Low & middle income", "Middle income", "IBRD only", "Upper middle income",
+"North America", "Late-demographic dividend", "East Asia & Pacific", "Europe & Central Asia",
+"East Asia & Pacific (IDA & IBRD countries)", "East Asia & Pacific (excluding high income)",
+"Early-demographic dividend", "European Union", "Euro area", "Lower middle income",
+"Latin America & Caribbean", "Latin America & the Caribbean (IDA & IBRD countries)",
+"Latin America & Caribbean (excluding high income)", "Europe & Central Asia (IDA & IBRD countries)",
+"Europe & Central Asia (excluding high income)", "Middle East & North Africa", "South Asia",
+"South Asia (IDA & IBRD)", "Arab World", "IDA total", "Russian Federation", "Sub-Saharan Africa",
+"Sub-Saharan Africa (IDA & IBRD countries)", "Small states",
+"Sub-Saharan Africa (excluding high income)", "IDA only", "Middle East & North Africa (excluding high income)",
+"Middle East & North Africa (IDA & IBRD countries)", "Least developed countries: UN classification",
+"Central Europe and the Baltics", "Korea, Rep.", "Pre-demographic dividend",
+"Heavily indebted poor countries (HIPC)", "Fragile and conflict affected situations", "IDA blend",
+"Caribbean small states", "Low income", "Pacific island small states" )
+```
+
+
+<center> <h2 id="health" style="color:teal;"> Health </h2> <centre></center>
+After importing the data, the first domain that we chose to analyse was Health since quality and availability of healthcare in a country is one of the best indicators its overall well-being.
+
+
+The first thing we checked was the life expectancy of countries in 2018. Then, we checked which countries spent more on healthcare. We measured the spending per capita in USD. 
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+
+data_filtered_health <- data_gathered %>% filter(`Indicator Code`== 'SP.DYN.CDRT.IN' | `Indicator Code`== 'SP.DYN.LE00.IN' | `Indicator Code`== 'SP.POP.GROW'| `Indicator Code`== 'SH.XPD.CHEX.GD.ZS' |`Indicator Code`== 'SH.XPD.OOPC.CH.ZS' |`Indicator Code`== 'SH.UHC.OOPC.25.ZS' | `Indicator Code` == 'SH.UHC.NOP1.ZS'| `Indicator Code` =='SH.XPD.CHEX.PP.CD' )
+data_proper_health <- data_filtered_health %>% select(-`Country Code`,-`Indicator Name`) %>% spread(`Indicator Code`,`value`)
+
+#Highest life expectancy in 2018
+top_10_life_expectancy <- data_proper_health %>% 
+  filter(year == '2018' ) %>% 
+  arrange(desc(`SP.DYN.LE00.IN`)) %>% 
+  select(`Country Name`)
+top_10_life_expectancy
+
+top_10_health_expenditure <- data_proper_health %>% 
+  filter(!(`Country Name` %in% non_country_names)) %>%
+  filter(year == '2017') %>% 
+  arrange(desc(`SH.XPD.CHEX.GD.ZS`)) %>% 
+  select(`Country Name`)
+top_10_health_expenditure
+```
+
+<hr>
+
+Then, we decided to see how both these things have progressed in different country categories. These categories were based on the economic condition of a country.
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+
+#Life expectancy throughout the years
+
+le_through_years <- data_proper_health %>% 
+  filter(`Country Name` == 'World' | `Country Name` == 'Middle income' | 
+           `Country Name` == 'Low income' | `Country Name` == 'High income') %>%
+   filter(`year` > 2000) %>%
+  select(`year`, `Country Name`, `SP.DYN.LE00.IN` )
+
+le_plot <- ggplot(data = le_through_years, aes(x = `year`, y = `SP.DYN.LE00.IN`, group = `Country Name`))+
+  geom_line(aes(color= `Country Name`), size=1) +
+  xlab("Year") + ylab("Life Expectancy (Years)") +
+  ggtitle("Life expectancy over the years") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))+
+scale_x_discrete(breaks = c(2001, 2005, 2009, 2013, 2017, 2019))+
+  theme(plot.margin = unit(c(2,0,2,0),"cm"))
+
+  
+#Health expenditure of country categories over the years
+he_through_years <- data_proper_health %>% 
+  filter(`Country Name` == 'World' | `Country Name` == 'Middle income' | 
+           `Country Name` == 'Low income' | `Country Name` == 'High income') %>%
+  filter(`year` > 2000) %>%
+  select(`year`, `Country Name`, `SH.XPD.CHEX.PP.CD` ) 
+he_plot <- ggplot(data = he_through_years, aes(x = `year`, y = `SH.XPD.CHEX.PP.CD`, group = `Country Name`))+
+  geom_line(aes(color= `Country Name`), size=1) +
+  xlab("Year") + ylab("Health expenditure per capita (US Dollars)") +
+  ggtitle("Health expenditure over the years")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))+
+  scale_x_discrete(breaks = c(2001, 2005, 2009, 2013, 2017, 2019))+
+  theme(plot.margin = unit(c(2,0,2,0),"cm"))
+
+#plotting the  health expenditure & life expectancy plots together
+grid.arrange(le_plot,he_plot,ncol = 2)
+```
+
+We saw that the Life expectancy had gone up for the entire world progressively. Same can be said for spending as well. The average of high-income countries was $2700 in 1964 which went up to $5750 in 2017. For lower income countries, it went from $54 to $104. 
+
+
+Next, we compared the health spending per capita of U.S., Canada and India. For a fair comparison, we compared their expenditure as a percent of their GDP.
+
+<hr>
+
+```{r echo=FALSE}
+
+
+#Health spendings of India, Canada and US throughout years 
+icu_health <- data_proper_health %>% filter(`Country Name` == 'India' | `Country Name` == 'Canada'| `Country Name` == 'United States' | `Country Name` == 'World')%>%
+  select(`year`,`Country Name`,`SH.XPD.CHEX.GD.ZS`) %>%
+  filter(`year` > 2000 & `year`< 2018)
+ggplot(data = icu_health, aes(x = `year`, y = `SH.XPD.CHEX.GD.ZS`, group = `Country Name`))+
+  geom_line(aes(color= `Country Name`), size=1) +
+  xlab("Year") + ylab("Health Expenditure(% of GDP)") +
+  ggtitle("Health expenditure of India, Canada, U.S.A and World throughout the years") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5))
+```
+
+We saw that Canada's expenditure was the closest to the world. United States spent a lot higher than Canada whereas India's spending seemed significantly lower than the world average. 
+
+<h2> Does more expenditure give better outcomes? </h2>
+
+Looking at these graphs, it looks like countries with higher spending have better Health coverage. We decided to verify this by doing a pearson correlation test between life expectancy and health expenditure.
+
+```{r echo=FALSE}
+
+#Life expectancy and Health spendings
+
+cor.test(data_proper_all$SP.DYN.LE00.IN, data_proper_all$SH.XPD.CHEX.PP.CD, method = 'pearson')
+
+
+```
+
+The correlation coefficient was 0.63, which makes it a decent correlation.
+
+After this, we checked the correlation between Per capita expenditure and UHC index, which seemed like an even better indicator of a country's Health coverage and quality. UHC (Universal Health Coverage) index is given by the World Health Organization and it also considers factors such as access to healthcare, quality, child or new-born mortality rate, spread and prevalence of infectious disease etc. 
+
+```{r echo=FALSE}
+
+#Per Capita expenditure in USD
+cor.test(data_proper_all$SH.XPD.CHEX.PP.CD, data_proper_all$SH.UHC.SRVS.CV.XD, method = 'pearson')
+
+
+```
+
+
+The correlation was 0.677 which is an even better correlation. We could firmly say that spending more on healthcare results in better outcomes objectively.
+
+
+<hr>
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+
+#Average percent of population pushed below poverty line because of healthcare expenditure
+poverty_increase_health <- data_proper_health %>%
+  filter(!(`Country Name` %in% non_country_names)) %>%
+  group_by(`Country Name`) %>% 
+  summarise(Mean = mean(`SH.UHC.NOP1.ZS`, na.rm = TRUE)) %>% 
+  arrange(desc(`Mean`))
+top_10_poverty_increase_health <- poverty_increase_health %>% head(10)
+ggplot(data = top_10_poverty_increase_health, aes(x=fct_reorder(`Country Name`,desc(Mean)), y=Mean, fill= fct_reorder(`Country Name`,desc(Mean)))) + 
+  geom_bar(stat='identity') +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5), axis.text.x = element_blank()) +
+  xlab("Country") + ylab("Percent of Population") +
+  ggtitle("% population pushed below poverty line due to healthcare expenditure")+
+  labs(fill= "Country Name")
+``` 
+
+<h2> Does India spend significantly less than other lower middle income countries? </h2>
+
+India was 3rd in this list. From this and other the data we saw, it looked like India's poor performance in healthcare was due to low spending on healthcare, which was substantially less than the world average. In fact, it seemed even less than the spending of countries of Lower middle income category. We wanted to statistically verify this hypothesis so we used t-test to see if the difference was actually statistically significant.
+
+``` {r echo= FALSE}
+ind_li_health_exp <- data_proper_health %>% filter(`Country Name` == 'Lower middle income' | `Country Name` == 'India') %>% filter(`year` > 1999 & `year` <2018) %>% select(`year`,`Country Name`,`SH.XPD.CHEX.GD.ZS`) %>% rename(Country = `Country Name`)
+
+ind_li_grouped <- ind_li_health_exp %>% group_by(`Country`)
+
+# get_summary_stats(ind_li_grouped)
+
+# identify_outliers(ind_li_grouped, `SH.XPD.CHEX.GD.ZS`)
+
+# shapiro_test(ind_li_grouped, `SH.XPD.CHEX.GD.ZS`)
+
+#Results of Shapiro Test tell us that they are normally distributed hence t test is applicable
+
+# levene_test(ind_li_health_exp, `SH.XPD.CHEX.GD.ZS` ~ `Country`)
+
+t_test(ind_li_health_exp, `SH.XPD.CHEX.GD.ZS` ~ Country, var.equal = FALSE)
+
+# t_result <- t_test(ind_li_health_exp, `SH.XPD.CHEX.GD.ZS` ~ Country, var.equal = FALSE)
+# add_significance(t_result)
+
+cohens_d(ind_li_health_exp, `SH.XPD.CHEX.GD.ZS` ~ Country, var.equal = FALSE)
+
+```
+
+It turned out that the difference between India's health expenditure as a percent of GDP and the average of spending of lower middle income countries was statistically significant with India's spending being low. We used cohens_d method to get the effect size, which was large. 
+
+
+
+<h2> Predictors of Universal Health Coverage Index </h2>
+
+Then we wanted to see what factors impact the UHC index the most, so we ran regression tests between UHC coverage and various indicators in the healthcare domain. In the end, the most effective combination of predictors was Government health expenditure and physicians per 1000.
+
+``` {r echo=FALSE}
+uhc_fit3 <- lm(`SH.UHC.SRVS.CV.XD` ~ `SH.MED.PHYS.ZS` + `SP.DYN.LE00.IN`, data_proper_all)
+summary(uhc_fit3)
+plot(uhc_fit3$fitted.values, uhc_fit3$residuals, xlab = "Fitted values", ylab = "Residuals", main = "Residuals vs fitted graph for the linear model")
+
+```
+
+Running a Linear model with Universal Health Coverage Index as the dependant variable and Life expectancy and Doctors per 1000 people as predictors, gave us an adjusted R-squared of 0.84 with 663.9 F-statistic on 2 and 250 df (p < 0.0001). 
+
+The value of adjusted r-squared was 0.84 which means that 84% of variability in UHC index is explained by our selected predictors.
+
+
+Our focus then was the population growth problem. We started by seeing the population growth of world’s most populated countries India and China and compared their growth to the world. 
+
+```  {r echo=FALSE, warning=FALSE}
+#population growth problem in India 
+
+pop_growth_india <- data_proper_health %>% 
+  select(`year` , `SP.POP.GROW`,`Country Name`) %>% 
+  filter(`Country Name` == 'India' | `Country Name` == 'World' | `Country Name` == 'China')
+pop_growth_india$year<- as.integer(pop_growth_india$year)
+pop_growth_india<- na.omit(pop_growth_india)
+ggplot(data = pop_growth_india, aes(x=`year`, y=`SP.POP.GROW`, group = `Country Name`)) + 
+  geom_line(aes(color= `Country Name`), size=1) +
+  geom_point() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Comparison of Population growth (%) of India, China and the World", 
+       x= 'Year', y= 'Population growth (%)') +
+  transition_reveal(`year`) 
+
+
+```
+
+We saw that the population growth rate was decreasing for both these countries. In fact, both these countries have a lower population growth rate than the world average currently. 
+An interesting discovery is that the sudden dip in China’s population growth occurred in 1979. The reason behind that was the One child policy introduced by China. Though they have lifted it in 2015, its immediate results can be clearly seen.
+
+
+Since the population growth for these countries and the world is gradually decreasing, it seemed that the population may stabilize someday in the future. We wanted to see when the population growth will get to 0. We used forecast function by r, which can be used for forecasting time series, to find the approximate year when population growth may get to 0.
+
+<hr>
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+
+data_proper_all <- data_gathered %>% select(-`Country Code`,-`Indicator Name`) %>% spread(`Indicator Code`,`value`)
+
+population_data <- data_proper_all %>% filter( `year` > 1980 & year < 2020 & `Country Name` == 'World') %>% select(`year`, `SP.POP.GROW`)
+pop_model_1 <- lm(`SP.POP.GROW` ~ `year`, data = data_proper_all)
+pop_model <- lm(`SP.POP.GROW` ~ `year`, data = population_data)
+# summary(pop_model)
+# summary(pop_model_1)
+pop_series <- ts(population_data,start = c(1981), end = c(2019))
+# plot.ts(pop_series)
+pop_fore_series <- HoltWinters(pop_series, beta=FALSE, gamma=FALSE)
+# pop_fore_series
+# pop_fore_series$fitted
+pop_fc <- forecast(pop_series, h = 60)
+autoplot(pop_fc$forecast$SP.POP.GROW, main="Forecast of Population Growth ", xlab="Year",ylab="Population Growth (%)",fcol="Purple")+scale_x_continuous(breaks = c(1960,1970,1980,1990,2000,2010,2020,2030,2040,2050,2060,2070,2080))
+
+
+```
+
+The results suggest that the population growth will get to 0 % around 2070. The results are close to a study done in 2014 which showed it will happen around 2075. 
+
+<center> <h2 id="economy" style="color:teal;"> Economy </h2> <centre></center>
+
+Our next focus was economy. We started by seeing the countries with highest GDP. European and North American countries topped this list. We then saw which countries have highest growth rate of GDP and as expected, this list was topped by countries that are developing but have good economies. 
+
+<hr>
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+data_filtered_spal <- data_gathered %>% filter(`Indicator Code`== 'per_sa_allsa.cov_q1_tot' |  `Indicator Code`== 'SL.UEM.1524.ZS' | `Indicator Code`== 'SL.UEM.1524.ZS' | `Indicator Code`== 'SL.UEM.TOTL.ZS'| `Indicator Code`== 'per_allsp.cov_pop_tot' |`Indicator Code`== 'SL.GDP.PCAP.EM.KD')
+data_proper_spal <- data_filtered_spal %>% select(-`Country Code`,-`Indicator Name`) %>% spread(`Indicator Code`,`value`)
+
+developed_countries<- c("Norway","Switzerland","Ireland","Germany", "Hong Kong SAR, China", "Australia", "Iceland", "Sweden", "Singapore", "Netherlands", "Denmark", "Finland", "Canada", "New Zealand", "United Kingdom", "United States", "Belgium", "Liechtenstein", "Japan", "Austria")
+# length(developed_countries)
+
+countries_developed <-data_proper %>% filter(`Country Name` %in% developed_countries)
+
+#Countries with highest GDP per capita
+top_10_gdp_per_capita <- data_proper %>% filter(`year` == '2019') %>% 
+  arrange(desc(`NY.GDP.PCAP.CD`)) %>% 
+  head(10)
+ggplot(data = top_10_gdp_per_capita, aes(x=fct_reorder(`Country Name`,desc(`NY.GDP.PCAP.CD`)), y=`NY.GDP.PCAP.CD`, fill=`Country Name`)) + 
+  geom_bar(stat='identity') + 
+  coord_flip()+
+  xlab("Country") + ylab("GDP per capita") + 
+  labs(title = "Countries with highest GDP per capita in 2019.") +
+  theme(legend.position = "none")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) 
+
+#Countries with highest per capita GDP growth
+top_10_gdp_growth_per_capita <- data_proper %>% 
+  filter(`year` == '2019') %>% 
+  arrange(desc(`NY.GDP.PCAP.KD.ZG`)) %>% 
+  head(10)
+ggplot(data = top_10_gdp_growth_per_capita, aes(x=fct_reorder(`Country Name`, desc(`NY.GDP.PCAP.KD.ZG`)),y=`NY.GDP.PCAP.KD.ZG`)) + 
+  geom_bar(stat='identity', fill="darkcyan") +
+  xlab("Country") + ylab("Growth in GDP") + 
+  labs(title="Countries with highest per capita GDP growth in 2019") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  theme(legend.position = "none")
+
+```
+
+
+
+
+
+
+The next thing we checked was the growth rate of USA and Canada, which are first world countries and India which is a developing nation to look for conclusive trends.
+
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+
+#Growth of GDP of India, Canada and USA
+icu <- data_proper %>% filter(`Country Name` == 'India' | `Country Name` == 'Canada'| `Country Name` == 'United States' | `Country Name` == 'World')%>%
+        select(`year`,`Country Name`,`NY.GDP.PCAP.KD.ZG`) %>% filter(`year` > 2000)
+icu$year<- as.integer(icu$year)
+icu<- na.omit(icu)
+icu_plot<- ggplot(data = icu, aes(x = `year`, y = `NY.GDP.PCAP.KD.ZG`, group = `Country Name`))+
+  geom_line(aes(color= `Country Name`), size=1) +
+  geom_point(aes(color= `Country Name`)) +
+  ggtitle("Growth of GDP in India, Canada and USA.") +
+  xlab("Year") + ylab("GDP Growth") +
+  theme(plot.title = element_text(hjust = 0.5))+
+  transition_reveal(`year`)
+icu_plot
+
+```
+
+
+Out of these countries, India has consistently had highest GDP growth rate. US and Canada have had similar growth rates. Around 2008, all the countries had lowest growth rate in years. US, Canada and world average had gone below zero percent. This can be attributed to the Economic recession which hurt almost the entire world economically. 
+
+We wanted to see if similar results are reflected by other countries with similar economic categories, so we plotted various country categories.
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+#growth of gdp in the country categories
+gdp_g_r <- data_proper %>% filter(`Country Name` == 'High income' | `Country Name` == 'Middle income'|
+                                    `Country Name` == 'Low income' | `Country Name` == 'World' |
+                                    `Country Name` == 'Low & middle income' | `Country Name` == 'Upper middle income')%>%
+  select(`year`,`Country Name`,`NY.GDP.PCAP.KD.ZG`) %>% filter(`year` > 2000) %>% rename(`Country Category` = `Country Name`)
+gdp_g_r$year<- as.integer(gdp_g_r$year)
+gdp_g_r<- na.omit(gdp_g_r)
+gdp_g_r_plot<- ggplot(data = gdp_g_r, aes(x = `year`, y = `NY.GDP.PCAP.KD.ZG`, group = `Country Category`))+
+  geom_line(aes(color= `Country Category`), size=1) +
+  ggtitle("Growth of GDP in country categories") +
+  xlab("Year") + ylab("GDP Growth (%)") +
+  theme(plot.title = element_text(hjust = 0.5))+
+  scale_x_continuous(breaks = c(2001,2005,2009,2013,2017,2019))+
+  scale_y_continuous(breaks = c(-6,-4,-2,0,2,4,6,8))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+       axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) 
+gdp_g_r_plot
+
+```
+
+The results we found were interesting. One of the things we noticed was how Lower middle income, middle income and upper middle income countries' economies almost go hand in hand. These categories are above the rest or world average which suggests that they are economies that are getting constantly better.High income countries have economies who have relatively stable growth rate just above zero. The world economy, however, is heavily influenced by the higher income countries. The line graphs of these two categories go together through the years. 
+
+<h2> Does US have a higher per capita GDP than Canada? </h2>
+
+We compared the adjusted GDP per capita of Canada and USA which are believed to be equally wealthy. We ran a hypothesis test with the null hypothesis that USA and Canada have the same GDP per capita over the years. 
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+
+emp_uc <- data_proper_spal %>% select(`year`, `Country Name`, `SL.GDP.PCAP.EM.KD`) %>% filter(`Country Name` == 'Canada' | `Country Name` == 'United States') %>% filter(`year` > 1990 & `year` < 2019) %>% rename(Country = `Country Name`)
+
+emp_uc_grouped <- emp_uc %>% group_by(`Country`)
+
+# get_summary_stats(emp_uc_grouped, `SL.GDP.PCAP.EM.KD`, type = 'mean_sd')
+
+# identify_outliers(emp_uc_grouped, `SL.GDP.PCAP.EM.KD`)
+
+# shapiro_test(emp_uc_grouped,`SL.GDP.PCAP.EM.KD`)
+
+wilc_results <- emp_uc %>% wilcox_test(`SL.GDP.PCAP.EM.KD` ~ `Country`, detailed = TRUE)
+# add_significance(wilc_results)
+
+emp_uc %>% wilcox_test(`SL.GDP.PCAP.EM.KD` ~ `Country`, detailed = TRUE)
+
+cohens_d(emp_uc,`SL.GDP.PCAP.EM.KD` ~ `Country`)
+
+```
+
+The result showed that the GDP of USA was statistically higher than that of Canada. Since the data was not normally distributed, we ran Wilcoxon test which showed that the GDP Per Capita of US was high with a W-statistic of 64 (p<0.0001). Running the cohens_d test revealed that the magnitude of this difference was large.
+
+
+<h2> Income inequality and GDP per capita </h2>
+One of the most interesting facts we found was the correlation between GDP and percent of income share held by the wealthiest and least wealthiest. Here are the results of correlation tests between GDP per capita and income share held by the bottom 10% :
+
+``` {r echo=FALSE, warning=FALSE, message=FALSE}
+#Correlation between GDP per capita and income share of bottom 10%
+
+cor.test(data_proper$SI.DST.FRST.10, data_proper$NY.GDP.PCAP.CD, method = 'pearson')
+
+```
+And here is the result of pearson correlation test between GDP per capita and income share held by the top 10% :
+
+``` {r echo=FALSE, warning=FALSE, message=FALSE}
+#Correlation between GDP per capita and income share of Top 10%
+
+cor.test(data_proper$SI.DST.10TH.10, data_proper$NY.GDP.PCAP.CD, method = 'pearson')
+
+```
+The GDP per capita was directly proportional to the income share held by the bottom 10% of the country (r=0.32), but it was inversely proportional to the income share held by the richest 10% (r= -0.43). This was surprising and it clearly displayed how income inequality was a problem for the overall well-being of a country.
+
+<h2> Unemployment problem in India </h2>
+
+When we checked the unemployment rate of India, US and Canada, India’s unemployment rate turned out to be the lowest. It was surprising since US and Canada have much better economies than India. It turns out that the real problem in India is underemployment, which isn’t measured well in a country like India. We decided to check Youth unemployment rates (People between 16-25 who are not in school nor working). That gave us a much better picture of the performance of these countries.
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+
+#ICU unemployment over the years
+
+icu_youth_unemployment <- data_proper_spal %>% filter(`Country Name` == 'India' | `Country Name` == 'Canada'| `Country Name` == 'United States' | `Country Name` == 'World' | `Country Name` =='Lower middle income' )%>%
+  select(`year`,`Country Name`,`SL.UEM.1524.ZS`) %>% filter(`year` > 2000)
+youth_unemp <- ggplot(data = icu_youth_unemployment, aes(x = `year`, y = `SL.UEM.1524.ZS`, group = `Country Name`)) + 
+  geom_line(aes(color= `Country Name`))+
+  labs(title = 'Youth unemployment rate',y="% of youth unemployed and not in school")+
+  scale_x_discrete(breaks = c(2001,2005,2009,2013,2017,2019))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5))+
+  theme(plot.margin = unit(c(2,0,2,0),"cm"))
+
+
+#ICU unemployment over the years
+
+
+icu_unemployment <- data_proper_spal %>% filter(`Country Name` == 'India' | `Country Name` == 'Canada'| `Country Name` == 'United States' | `Country Name` == 'World' | `Country Name` =='Lower middle income')%>%
+  select(`year`,`Country Name`,`SL.UEM.TOTL.ZS`) %>% filter(`year` > 2000)
+tot_umemp <- ggplot(data = icu_unemployment, aes(x = `year`, y = `SL.UEM.TOTL.ZS`, group = `Country Name`)) + 
+  geom_line(aes(color= `Country Name`)) +
+  labs(title = 'Total unemployment rate',y="% of Population unemployed")+
+  scale_x_discrete(breaks = c(2001,2005,2009,2013,2017,2019))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5))+
+  theme(plot.margin = unit(c(2,0,2,0),"cm"))
+
+grid.arrange(tot_umemp, youth_unemp, ncol=2)
+
+```
+
+
+In both of the graphs, US and Canada have a drop at around 2008 near the recession years, but India has a much higher rate of youth unemployment than US and Canada. The fact that it is much higher than even the lower middle income countries and is continuously increasing in past few years is concerning.
+
+<h2 id="education" style="color:teal;"><center>Education </center></h2>
+
+``` {r include=FALSE}
+data_gathered <- data %>% gather(key="year",value = "value",-`Country Name`,-`Country Code`,-`Indicator Name`,-`Indicator Code`)
+data_gathered
+data_filtered_edu <- data_gathered %>% filter( `Indicator Code`== 'SE.XPD.TOTL.GD.ZS' | 
+                                                 `Indicator Code` == 'SE.COM.DURS' | 
+                                                 `Indicator Code` == 'SE.PRM.CUAT.ZS'|
+                                                 `Indicator Code` == 'SE.SEC.CUAT.UP.ZS'| 
+                                                 `Indicator Code` == 'SE.TER.CUAT.BA.ZS'| 
+                                                 `Indicator Code` == 'SE.TER.CUAT.DO.ZS'| 
+                                                 `Indicator Code` == 'SE.ADT.LITR.ZS' |
+                                                 `Indicator Code` == 'SE.PRM.UNER' |   
+                                                 `Indicator Code` == 'SE.TER.CUAT.MS.ZS'|
+                                                 `Indicator Code` == 'SE.ENR.PRIM.FM.ZS'|
+                                                 `Indicator Code` == 'SE.PRM.CUAT.FE.ZS')
+data_filtered_edu
+data_proper_edu <- data_filtered_edu %>% select(-`Country Code`,-`Indicator Name`) %>% spread(`Indicator Code`,`value`)
+data_proper_edu
+
+developed_countries_edu<-data_proper_edu %>% filter(`Country Name` %in% country_names)
+options(scipen = 999)
+#developed countries
+country_names<- c("Norway","Switzerland","Ireland","Germany", "Hong Kong SAR, China
+", "Australia", "Iceland", "Sweden", "Singapore", "Netherlands", "Denmark", "Finland", "Canada",
+"New Zealand", "United Kingdom", "United States", "Belgium", "Liechtenstein", "Japan", "Austria","World")
+length(country_names)
+developed_countries<-data_proper %>% filter(`Country Name` %in% country_names)
+```
+
+The very first thing that we wanted to check in education was to see that which were the countries that spent the most on education. For most of the parts, we wanted to analyze the indicators for the latest year in which the largest amount of data was available. So, the spending was checked for the year 2017, which turned out to be that the  most of the countries among the top 10 countries were African countries such as Lesotho(7.42%), Burkina Faso(6.42%), Guyana(6.23%), South Africa(6.11%) and Mozambique(5.75%).
+``` {r echo=FALSE , warning= FALSE}
+#Percent of expenditure on education in 2017
+top_10_education_expenditure <- data_proper_edu %>% 
+  filter(`year` == '2017') %>% 
+  select(`year`,`Country Name`,`SE.XPD.TOTL.GD.ZS`) %>%
+  arrange(desc(`SE.XPD.TOTL.GD.ZS`)) %>% 
+  head(10)
+ggplot(data = top_10_education_expenditure, aes(x=fct_reorder(`Country Name`,desc(`SE.XPD.TOTL.GD.ZS`)), y=`SE.XPD.TOTL.GD.ZS`, fill=`SE.XPD.TOTL.GD.ZS`)) + 
+  geom_bar(stat='identity') +
+  ggtitle(" Countries spending highest on education in 2017") +
+  xlab("Country") + ylab("Education Expenditure(% of GDP)") +
+  labs(fill = "Education Expenditure") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) 
+```
+<hr>
+
+Then we checked the educational expenditure for the country categories according to the income and also the average of the world and compared it to the literacy rates for the same. The country categories were Low income, Low & middle income, Middle income. The results indicated that the more a country spends on education, the more the literacy rate of the country is. Also, the better the economy of a country is, the more it spends on education. Therefore, middle income countries spend more on education than low & middle income countries, and as a result, the literacy rate of middle income countries is better than that of low income countries as well.
+``` {r echo=FALSE, warning= FALSE}
+#Educational spendings according to country categories in 2016.
+categ_spendings <- data_proper_edu%>% 
+  filter(`year` == '2016') %>%
+  filter(`Country Name` == 'Middle income'| 
+            `Country Name` == 'Low & middle income'|
+           `Country Name` == 'Low income'| `Country Name` == 'World')%>%
+  select(`year`,`Country Name`,`SE.XPD.TOTL.GD.ZS`)
+categ_plot <- ggplot(data = categ_spendings,  aes(x=fct_reorder(`Country Name`,desc(`SE.XPD.TOTL.GD.ZS`)), y=`SE.XPD.TOTL.GD.ZS`, fill=`Country Name`)) + 
+  geom_bar(stat='identity')+ labs(title = "Educational spendings",
+                                  x="Country Category", y="Education expenditure (%of GDP)")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) 
+
+#Literacy rate of country categories in 2016
+categ_literacy <- data_proper_edu%>% 
+  filter(`year` == '2016') %>%
+  filter( `Country Name` == 'Middle income'| 
+           `Country Name` == 'Low & middle income'|
+           `Country Name` == 'Low income'| `Country Name` == 'World')%>%
+  select(`year`,`Country Name`,`SE.ADT.LITR.ZS`)
+categ_literacy_plot <- ggplot(data = categ_literacy,  aes(x=fct_reorder(`Country Name`,desc(`SE.ADT.LITR.ZS`)), y=`SE.ADT.LITR.ZS`, fill=`Country Name`)) + 
+  geom_bar(stat='identity')+ labs(title = "Literacy rate",
+                                  x="Country Category", y="Percent of literate adults")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+```
+<center>
+``` {r echo=FALSE, warning=FALSE}
+#Combining both the category plots
+grid.arrange(categ_plot, categ_literacy_plot, ncol =2)
+```
+</center>
+
+<hr>
+
+<h2> Education problem in Pakistan </h2>
+
+One really interesting indicator in education was the one that displayed the amount of primary age children that should have been enrolled in primary or secondary school, but are not. After delving into this indicator, one shocking fact was found that in the year 2018, there were more than six million primary school age children in Pakistan who were not enrolled in school. This number is three times greater than that of Tanzania, which is the 2nd country for this indicator. 
+
+
+``` {r echo=FALSE, warning= FALSE}
+#Countries with most number of primary-school-age children not enrolled in primary or secondary school.
+top_10_countries_out_prim <- data_proper_edu %>% 
+  filter(`year` == '2018') %>% 
+  filter(!(`Country Name` %in% non_country_names)) %>%
+  arrange(desc(`SE.PRM.UNER`)) %>% 
+  select(`Country Name`, `year`, `SE.PRM.UNER`) %>% 
+  head(5) 
+ggplot(data = top_10_countries_out_prim, aes(x=fct_reorder(`Country Name`,desc(`SE.PRM.UNER`)), y=`SE.PRM.UNER`, fill=`SE.PRM.UNER`,label=`SE.PRM.UNER`)) + 
+  geom_bar(stat='identity') +
+  ggtitle("Countries with most amount of children not enrolled in primary school") +
+  geom_text(size = 4, position = position_stack(vjust = 0.85),color="white")+
+  xlab("Country") + ylab("Number of children") +
+  labs(fill = "Number of children") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(vjust = 1, hjust=1)) 
+```
+
+<hr>
+
+The last thing that we checked in education sector was the educational attainment for different levels and seeing the top 10 countries in each country. It turns out that in Germany, 100% of adults have attained primary level education. Germany also comes in top 10 countries in other level of education (upper secondary, bachelors, masters and doctoral). Uzbekistan, Kazakhstan, Australia, Maldova and United States of America have 99% of adults that completed primary education. Kazakhstan also tops in upper secondary level education.United Arab Emirates has most number of bachelors graduated while Switzerland has most number of people that have masters and doctorate degrees.
+
+
+``` {r echo=FALSE, warning=FALSE}
+# % completed primary education
+top_10_countries_prim <- data_proper_edu %>% 
+  filter(`year` == '2018') %>% 
+  arrange(desc(`SE.PRM.CUAT.ZS`)) %>% 
+  select(`Country Name`, `SE.PRM.CUAT.ZS`) %>% 
+  head(10) %>% rename('Percent of people with primary education' = `SE.PRM.CUAT.ZS`)
+top_10_countries_prim_plot<- ggplot(data = top_10_countries_prim, aes(x=fct_reorder(`Country Name`,desc(`SE.PRM.CUAT.ZS`)), y=`SE.PRM.CUAT.ZS`, fill=`SE.PRM.CUAT.ZS`, label=`SE.PRM.CUAT.ZS`)) +
+  geom_bar(stat='identity') +
+  ggtitle(" Countries with highest percent of population completed primary education") +
+  geom_text(size = 4, position = position_stack(vjust = 0.95),color="white")+
+  xlab("Country") + ylab("Percent of Population") +
+  labs(fill = "Percent of Population") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45,vjust = 1, hjust=1)) 
+# % completed upper secondary education
+top_10_countries_upp_sec <- data_proper_edu %>% 
+  filter(`year` == '2018') %>% 
+  arrange(desc(`SE.SEC.CUAT.UP.ZS`)) %>% 
+  select(`Country Name`, `SE.SEC.CUAT.UP.ZS`) %>% 
+  head(10) %>% rename('Percent of people with secondary education' = `SE.SEC.CUAT.UP.ZS`)
+top_10_countries_upp_sec_plot<- ggplot(data = top_10_countries_upp_sec, aes(x=fct_reorder(`Country Name`,desc(`SE.SEC.CUAT.UP.ZS`)), y=`SE.SEC.CUAT.UP.ZS`, fill=`SE.SEC.CUAT.UP.ZS`, label=`SE.SEC.CUAT.UP.ZS`)) + 
+  geom_bar(stat='identity') +
+  ggtitle(" Countries with highest percent of population completed upper secondary education") +
+  geom_text(size = 4, position = position_stack(vjust = 0.95),color="white")+
+  xlab("Country") + ylab("Percent of Population") +
+  labs(fill = "Percent of Population") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45,vjust = 1, hjust=1)) 
+# % completed bachelors education
+top_10_countries_bachelors <- data_proper_edu %>% 
+  filter(`year` == '2018') %>% 
+  arrange(desc(`SE.TER.CUAT.BA.ZS`)) %>% 
+  select(`Country Name`, `SE.TER.CUAT.BA.ZS`) %>% 
+  head(10) %>% rename('Percent of people with Bachelors degree' = `SE.TER.CUAT.BA.ZS`)
+top_10_countries_bachelors_plot<-ggplot(data = top_10_countries_bachelors, aes(x=fct_reorder(`Country Name`,desc(`SE.TER.CUAT.BA.ZS`)), y=`SE.TER.CUAT.BA.ZS`, fill=`SE.TER.CUAT.BA.ZS`, label=`SE.TER.CUAT.BA.ZS`)) + 
+  geom_bar(stat='identity') +
+  ggtitle(" Countries with highest percent of population completed bachelors education") +
+  geom_text(size = 4, position = position_stack(vjust = 0.95),color="white")+
+  xlab("Country") + ylab("Percent of Population") +
+  labs(fill = "Percent of Population") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45,vjust = 1, hjust=1)) 
+# % completed masters education
+top_10_countries_masters <- data_proper_edu %>% 
+  filter(`year` == '2018') %>% 
+  arrange(desc(`SE.TER.CUAT.MS.ZS`)) %>% 
+  select(`Country Name`, `SE.TER.CUAT.MS.ZS`) %>% 
+  head(10) %>% rename('Percent of people with Masters degree' = `SE.TER.CUAT.MS.ZS`)
+top_10_countries_masters_plot<-ggplot(data = top_10_countries_masters, aes(x=fct_reorder(`Country Name`,desc(`SE.TER.CUAT.MS.ZS`)), y=`SE.TER.CUAT.MS.ZS`, fill=`SE.TER.CUAT.MS.ZS`, label=`SE.TER.CUAT.MS.ZS`)) + 
+  geom_bar(stat='identity') +
+  ggtitle(" Countries with highest percent of population completed masters education") +
+  geom_text(size = 4, position = position_stack(vjust = 0.95),color="white")+
+  xlab("Country") + ylab("Percent of Population") +
+  labs(fill = "Percent of Population") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45,vjust = 1, hjust=1)) 
+top_10_countries_doctoral <- data_proper_edu %>% 
+  filter(`year` == '2018') %>% 
+  arrange(desc(`SE.TER.CUAT.DO.ZS`)) %>% 
+  select(`Country Name`, `SE.TER.CUAT.DO.ZS`) %>% 
+  head(10) %>% rename('Percent of people with a PhD' = `SE.TER.CUAT.DO.ZS`)
+top_10_countries_doctoral_plot<-ggplot(data = top_10_countries_doctoral, aes(x=fct_reorder(`Country Name`,desc(`SE.TER.CUAT.DO.ZS`)), y=`SE.TER.CUAT.DO.ZS`, fill=`SE.TER.CUAT.DO.ZS`, label=`SE.TER.CUAT.DO.ZS`)) + 
+  geom_bar(stat='identity') +
+  ggtitle(" Countries with highest percent of population completed doctoral education") +
+  geom_text(size = 4, position = position_stack(vjust = 0.95),color="white")+
+  xlab("Country") + ylab("Percent of Population") +
+  labs(fill = "Percent of Population") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45,vjust = 1, hjust=1)) 
+```
+Countries with highest people with Primary education attainment
+```{r echo=FALSE}
+top_10_countries_prim
+```
+Countries with highest people with Secondary education attainment
+```{r echo=FALSE}
+top_10_countries_upp_sec
+```
+Countries with highest people with Bachelor's degree
+```{r echo=FALSE}
+top_10_countries_bachelors
+```
+Countries with highest people with Master's degree
+```{r echo=FALSE}
+top_10_countries_masters
+```
+Countries with highest people with PhD
+```{r echo=FALSE}
+top_10_countries_doctoral
+```
+<hr>
+Then we wanted to see the correlation between the percent of youth educated and percent of youth unemployed. The value for the Pearson Correlation Coefficient is 0.36 indicating that there is a moderate correlation between the aforementioned indicators.
+``` {r echo=FALSE, warning=FALSE}
+#Youth education and Youth unemployment rate
+cor.test(scale(data_proper$SL.UEM.1524.ZS), scale(data_proper$SE.ADT.1524.LT.ZS), method = 'pearson')
+```
+
+<h2 id="infra" style="color:teal;"><center>Infrastructure</center></h2>
+```{r include=FALSE}
+data_filtered_infra <- data_gathered %>% filter(`Indicator Code`== 'EP.PMP.DESL.CD' | 
+                                             `Indicator Code` == 'EP.PMP.SGAS.CD' | 
+                                             `Indicator Code` == 'IP.TMK.TOTL'|
+                                             `Indicator Code` == 'IQ.WEF.CUST.XQ'| 
+                                             `Indicator Code` == 'IQ.WEF.PORT.XQ'| 
+                                             `Indicator Code` == 'IS.AIR.DPRT'| 
+                                             `Indicator Code` == 'IS.AIR.GOOD.MT.K1'|
+                                             `Indicator Code` == 'IS.AIR.PSGR'| 
+                                             `Indicator Code` == 'IS.RRS.GOOD.MT.K6'| 
+                                             `Indicator Code` == 'IS.RRS.PASG.KM'| 
+                                             `Indicator Code` == 'IS.RRS.TOTL.KM'|
+                                             `Indicator Code` == 'IT.CEL.SETS'|
+                                             `Indicator Code` == 'IT.CEL.SETS.P2'|
+                                             `Indicator Code` == 'IT.MLT.MAIN'|
+                                             `Indicator Code` == 'IT.MLT.MAIN.P2'|
+                                             `Indicator Code` == 'IT.NET.BBND'|
+                                             `Indicator Code` == 'IT.NET.BBND.P2'|
+                                             `Indicator Code` == 'IT.NET.SECR.P6'|
+                                             `Indicator Code` == 'IT.NET.SECR'|
+                                             `Indicator Code` == 'IT.NET.USER.ZS'|
+                                             `Indicator Code` == 'TX.MNF.TECH.ZS.UN'|
+                                             `Indicator Code` == 'TX.VAL.TECH.CD'|
+                                             `Indicator Code` == 'TX.VAL.TECH.MF.ZS' |
+                                             `Indicator Code` == 'TM.VAL.ICTG.ZS.UN' |
+                                             `Indicator Code` == 'TX.VAL.ICTG.ZS.UN')
+data_filtered_infra
+data_proper_infra <- data_filtered_infra %>% select(-`Country Code`,-`Indicator Name`) %>% spread(`Indicator Code`,`value`)
+data_proper_infra
+
+developed_countries_infra<-data_proper_infra %>% filter(`Country Name` %in% country_names)
+
+```
+
+<hr>
+
+<h2> Cellphone users in India </h2>
+
+While seeing the indicators available in infrastructure sector, we were particularly intrigued by the percent of population using internet. So, we checked it for the years after 2000 in India. And an interesting thing was found that in the early 2000s, almost 0% of the population in India was using internet. The number grew gradually and reached over 20% in 2014, then dropped a bit in the following year. But after 2015, a huge spike can be seen, a 15% increase was experienced. The reason behind the growth was the introduction of a telecommunication company named Jio. The very first year of the company, a usage of 2gb of data was given to everyone who bought the sim at no cost for a whole year.
+``` {r echo=FALSE, warning= FALSE, message=FALSE}
+#percentage of population using internet in india 
+int_usg_india<- data_proper_infra %>%
+  filter(`Country Name`=="India") %>%
+  select(`Country Name`, `IT.NET.USER.ZS`, `year`) %>%
+  filter(`year`>2000)
+int_usg_india$year<- as.integer(int_usg_india$year)
+int_usg_india<- na.omit(int_usg_india)
+int_usg_plot<-ggplot(data = int_usg_india, aes(x = `year`, y = `IT.NET.USER.ZS`, group = `Country Name`))+
+  geom_line(aes(color= `Country Name`), size=1) +
+  geom_point(aes(color= `Country Name`)) +
+  ggtitle("Growth in people using internet in India over the years") +
+  xlab("Year") + ylab("Percent of Populaiton using internet") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  scale_x_continuous(breaks = c(2001,2003,2005,2007,2009,2011,2013,2015,2017,2019))+
+  transition_reveal(`year`)
+animate(int_usg_plot, renderer = gifski_renderer(loop = F))
+```
+<hr>
+
+<h2> Europe's supremacy in infrastructure </h2>
+
+Another thing that we found in Infrastructure was that the European developed countries outperformed other developed countries of the world in the infrastructure sector.
+In efficiency of customs procedure, countries like Finland(6.3), Netherlands(6.3) Sweden(5.6), United Kingdom(5.5), Ireland(5.4), Switzerland(5.4) and Austria(5.3) have the highest ratings.This indicator is a rating given by the business executives of the country according to their perspective on their country's efficiency on customs procedure.
+For quality of port infrastructure too, European developed countries were among the top 10. With having rating above 5 out of 7.
+
+``` {r echo=FALSE, warning=FALSE}
+#top 20 countries acc. to the efficiency of customs procedure in 2017(1-7)
+top_20_customs <- developed_countries_infra %>% 
+  filter(`year` == '2017') %>% 
+  arrange(desc(`IQ.WEF.CUST.XQ`)) %>% 
+  select(`Country Name`, `year`, `IQ.WEF.CUST.XQ`) %>%
+  head(20)
+ggplot(data = top_20_customs, aes(x=fct_reorder(`Country Name`,desc(`IQ.WEF.CUST.XQ`)), y=`IQ.WEF.CUST.XQ`, fill=`IQ.WEF.CUST.XQ`)) + 
+  geom_bar(stat='identity') +
+  ggtitle("Developed countries with most efficient customs procedure in 2017") +
+  xlab("Country") + ylab("Rating(high means more efficient)") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),legend.position = "none") 
+
+#top 20 countries acc. to the quality of port infrastructure in 2017(1-7)
+top_20dev_port_quality <- developed_countries_infra %>% 
+  filter(`year` == '2017') %>% 
+  arrange(desc(`IQ.WEF.PORT.XQ`)) %>% 
+  select(`Country Name`, `year`, `IQ.WEF.PORT.XQ`) %>%
+  head(20)
+ggplot(data = top_20dev_port_quality, aes(x=fct_reorder(`Country Name`,desc(`IQ.WEF.PORT.XQ`)), y=`IQ.WEF.PORT.XQ`, fill=`IQ.WEF.PORT.XQ`)) + 
+  geom_bar(stat='identity') +
+  ggtitle("Developed countries with best port infrastructure quality in 2017") +
+  xlab("Country") + ylab("Rating(high means more efficient)") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),legend.position = "none") 
+```
+
+<h2 id="pub_private" style="color:teal;"><center>Public and Private Sector</center></h2>
+``` {r include=FALSE, warning= FALSE}
+data_filtered_priv_pub <- data_gathered %>% filter( `Indicator Code`== 'GC.DOD.TOTL.CN' | 
+                                             `Indicator Code` == 'GC.DOD.TOTL.GD.ZS' | 
+                                             `Indicator Code` == 'GC.NLD.TOTL.GD.ZS'|
+                                             `Indicator Code` == 'GC.REV.GOTR.ZS'| 
+                                             `Indicator Code` == 'GC.REV.SOCL.ZS'| 
+                                             `Indicator Code` == 'GC.TAX.INTT.RV.ZS'| 
+                                             `Indicator Code` == 'GC.TAX.TOTL.GD.ZS'|
+                                             `Indicator Code` == 'GC.TAX.TOTL.CN'|
+                                             `Indicator Code` == 'GC.TAX.YPKG.RV.ZS'| 
+                                             `Indicator Code` == 'GC.TAX.YPKG.ZS'| 
+                                             `Indicator Code` == 'GC.XPN.COMP.ZS'| 
+                                             `Indicator Code` == 'GC.XPN.TOTL.GD.ZS'|
+                                             `Indicator Code` == 'HD.HCI.OVRL' |
+                                          ######  Private ################# 
+                                             `Indicator Code` == 'IC.FRM.BRIB.ZS' |
+                                             `Indicator Code` == 'IC.BUS.EASE.XQ' |
+                                             `Indicator Code` == 'IC.BUS.NDNS.ZS' |
+                                             `Indicator Code` == 'IC.FRM.FEMM.ZS' |
+                                             `Indicator Code` == 'IC.FRM.INFM.ZS' |
+                                             `Indicator Code` == 'IC.TAX.PRFT.CP.ZS' |
+                                             `Indicator Code` == 'IC.TAX.TOTL.CP.ZS' |
+                                             `Indicator Code` == 'IQ.CPA.FISP.XQ' |
+                                             `Indicator Code` == 'IQ.CPA.PROT.XQ' |
+                                             `Indicator Code` == 'IQ.CPA.TRAN.XQ' |
+                                             `Indicator Code` == 'MS.MIL.TOTL.P1' |
+                                             `Indicator Code` == 'MS.MIL.XPND.GD.ZS' |
+                                             `Indicator Code` == 'MS.MIL.XPND.ZS' |
+                                             `Indicator Code` == 'VC.BTL.DETH' |
+                                             `Indicator Code` == 'VC.IHR.PSRC.P5' 
+                                                          )
+                                        
+data_filtered_priv_pub
+data_proper_priv_pub <- data_filtered_priv_pub %>% select(-`Country Code`,-`Indicator Name`) %>% spread(`Indicator Code`,`value`)
+data_proper_priv_pub
+
+#Developed countries
+developed_countries_priv_pub<-data_proper_priv_pub %>% filter(`Country Name` %in% country_names)
+
+#Public Sector
+```
+
+<hr>
+
+The first thing that we analyzed in this domain was the debts of countries, but we were specifically interested in India. Then we compared the debt of India with United States of America. We saw the progression of debt of both of the countries over the years. 
+In the first graph, it can be seen that the debt of India has been rising on a very fast pace each year. It started with a bit above 1 trillion USD in 1991 and by the year 2015, it reached above 55 trillion USD. The debt of USA has also been rising over the years, but it is not as huge amount as India and also the progression is not that large. 
+After seeing the debt, we then calculated and added the deficit for each year. We noticed a huge spike in the deficit of USA in the year 2001. On researching about it, we came to know that there was a huge tax cut in USA in 2001 and also the military expenditure of USA was very high.
+``` {r echo=FALSE, warning=FALSE}
+#debt and deficit of india ans us
+icu_debt <- data_proper_priv_pub %>% filter(`Country Name` == 'India' | `Country Name` == 'United States' )%>%
+  select(`year`,`Country Name`,`GC.DOD.TOTL.CN`) %>% 
+  filter(`year` > 1990 & `year`<2017) %>%
+  mutate("Debt_in_Trillions"= `GC.DOD.TOTL.CN`/1000000000000,
+         deficit = GC.DOD.TOTL.CN - lag(GC.DOD.TOTL.CN, default = 0),
+         "Deficit_in_Trillions"= deficit/1000000000000)
+icu_debt_plot<-ggplot(data = icu_debt, aes(x = `year`, y = `Debt_in_Trillions`, group = `Country Name`)) +
+  geom_line(aes(color= `Country Name`), size=1) +
+  xlab("Year")+ ylab("Debt in Trillions(USD)") +
+  ggtitle("Debt of India & U.S.A") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle=45,vjust = 1, hjust=1)) +
+  scale_y_continuous(breaks = c(1,5,10,15,20,25,30,35,40,45,50,55)) +
+scale_x_discrete(breaks = c(1991, 1996, 2001, 2006, 2011, 2016, 2019))
+icu_debt_plot
+icu_deficit_plot<-ggplot(data = icu_debt, aes(x = `year`, y = `Deficit_in_Trillions`, group = `Country Name`))+
+  geom_line(aes(color= `Country Name`), size=1) +
+  xlab("Year")+ ylab("Deficit in Trillions(USD)") +
+  ggtitle("Deficit of India & U.S.A") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle=45,vjust = 1, hjust=1)) +
+  scale_y_continuous(breaks = c(-2,-1.5,-1,-0.5,0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5)) +
+  scale_x_discrete(breaks = c(1991, 1996, 2001, 2006, 2011, 2016, 2019))
+
+grid.arrange(icu_debt_plot, icu_deficit_plot, ncol=2)
+```
+<hr>
+
+The next thing was to check the expenditure of government.For this, we checked it for the high income category to get a general idea on how much a country with a good economy would spend. We also considered World average, United States of America, Canada and India for this one, to get a diverse outcome. 
+
+In 2017,the high income countries spend more than that of the world average and as expected, USA's expenditure was also more than Canada and India.
+
+``` {r echo=FALSE, warning=FALSE}
+exp_cats<- data_proper_priv_pub %>%
+  select(`year`, `Country Name` , `GC.XPN.TOTL.GD.ZS`) %>%
+  filter(`year`==2017) %>%
+  filter(`Country Name` == 'High income'|`Country Name` == 'World' | `Country Name` == 'India' | `Country Name`=='United States' |`Country Name` == 'Canada')
+ggplot(data = exp_cats, aes(x=fct_reorder(`Country Name`,desc(`GC.XPN.TOTL.GD.ZS`)), y=`GC.XPN.TOTL.GD.ZS`, fill=`Country Name`, label=sprintf("%0.2f", round(`GC.XPN.TOTL.GD.ZS`, digits = 2)))) + 
+  geom_bar(stat='identity') + 
+  geom_text(size = 4, position = position_stack(vjust = 0.95),color="white")+
+  xlab("Country") + ylab("Expense(% of GDP)") + 
+  labs(title = "Government Expenditure") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none",
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle=45,vjust = 1, hjust=1))
+```
+<hr>
+
+While exploring the indicators for this sector, we came around the total tax rate of a country and decided to analyze the same for the different country categories and compared it with the World average too. The tax rate of the countries with better economy have a fairly stable and low tax rate over the years but it's not the same with low income countries. As wealthy a country gets, the tax rate also decreases accordingly. 
+
+```{r echo=FALSE, warning=FALSE}
+
+total_tax_rate_cats <- data_proper_priv_pub %>%
+  select(`year`, `Country Name`, `IC.TAX.TOTL.CP.ZS`) %>%
+  filter(`year`>2004 ) %>%
+  filter(`Country Name`== "High income" | `Country Name` == 'Low income' | `Country Name` == 'Middle income' | `Country Name` == 'World')
+ttrcat_plot<-ggplot(data = total_tax_rate_cats, aes(x = `year`, y = `IC.TAX.TOTL.CP.ZS`, group = `Country Name`))+ 
+  geom_line(aes(color= `Country Name`), size =1) + 
+  xlab("Year") + ylab("Total tax rate(% of commerical profits)") +
+  ggtitle("Tax rate of country categories")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5)) +
+  scale_x_discrete(breaks = c(2005,2009,2013,2017,2020))
+ttrcat_plot
+
+```
+
+<h2> Drop in Canada's corporate tax rates </h2>
+
+One interesting high income country was Canada because we noticed a huge drop in the tax rate in the year 2009. So after researching why it happened, we came to know that due to recession, to keep up with the world market, Canada had to lower the tax rate to almost half(42% - 22%). Since then, it has been a bit stable and is increasing in the recent years.
+``` {r echo=FALSE, warning=FALSE}
+
+total_tax_rate_comm_icuw <- data_proper_priv_pub %>%
+  select(`year`, `Country Name`, `IC.TAX.TOTL.CP.ZS`) %>%
+  filter(`year`>2004)  %>%
+  filter(`Country Name`=='Canada') 
+ttricu_plot<-ggplot(data = total_tax_rate_comm_icuw, aes(x = `year`, y = `IC.TAX.TOTL.CP.ZS`, group = `Country Name`))+ 
+  geom_line(aes(color= `Country Name`), size=1) +
+  xlab("Year") + ylab("Total tax rate(% of commerical profits)") +
+  ggtitle("Tax rate of Canada")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5)) +
+  scale_x_discrete(breaks = c(2005,2009,2013,2017,2020))
+
+ttricu_plot
+# grid.arrange(ttrcat_plot, ttricu_plot, ncol=2)
+```
+<hr>
+<h2>Do better economies have less bribery incidences?</h2>
+We came across an interesting indicator that recorded that how much percent of firms were offered bribe at least once in a country.
+So, we then delved into the indicator and noticed that better economies had less bribery incidences. Therefore, to confirm it, we ran a Pearson correlation test between bribery incidences and GDP of a country. The value for the coefficient was -0.45 suggesting that better economies do experience less bribery incidences.
+``` {r echo=FALSE, warning=FALSE}
+cor.test(data_proper_all$NY.GDP.PCAP.PP.CD,data_proper_all$IC.FRM.BRIB.ZS, method='pearson')
+```
+
+<h2 id="pred_gdp"> Predictors of GDP </h2>
+
+
+After observing all the data and finding interesting models and correlations, we wanted to see if we can find some definitive facts about how human well being can be achieved. Firstly, we used GDP per capita as the metric of human well being and checked which specific factors affect it the most. We ran multiple models with a combination of different predictors but the one with highest value of adjusted r-squared was the model with a combination of UHC index, Bachelor’s education attainment rate and unemployment rate. Out of these three, UHC index and Educational attainment were the most significant ones. This makes sense as Health and Education are considered really important and basis for the progress of a country. 
+
+
+``` {r echo= FALSE}
+#GDP with UHC health index, Bachelor's education, Unemployment rate
+
+gdp_predictors <- lm(`NY.GDP.PCAP.CD` ~ `SH.UHC.SRVS.CV.XD` + `SE.TER.CUAT.BA.ZS` + `SL.UEM.TOTL.ZS`, data_proper_all)
+summary(gdp_predictors)
+```
+
+The adjusted r-squared for this was 0.56. UHC index, Bachelor's attainment rate and total unemployment rate can explain 56% of variability in GDP per capita.
+
+<h2 id="pred_happiness"> What Predicts Happiness? </h2>
+
+Though GDP is certainly a really important factor of well being of a country, we decided to go a step further and echo the Happiness index report dataset. Happiness Index Report consists of subjective data where questions are asked to people to get their perceived answers.  The dataset has Happiness Score, Freedom to make life choices, Generosity, Social support, perception of corruption. Here is a brief look at the dataset: 
+
+``` {r echo=FALSE}
+data1 <- data_proper_all %>% filter(`year` == 2018) %>% select(`NY.GDP.PCAP.CD`, `Country Name`, `SL.UEM.TOTL.ZS`, `SI.POV.GINI`,`NY.GDP.PCAP.KD.ZG`, `SE.TER.CUAT.BA.ZS`, `IC.TAX.TOTL.CP.ZS`, `SH.XPD.CHEX.PP.CD`) %>% rename( Country = `Country Name`)
+# data2 <- read.csv('C:\\Users\\Kedar Deodhar\\Desktop\\Trent BDA\\Fall 2020\\Major Research Paper\\2018.csv') %>% rename( Country = 'Country.or.region')
+data2 <- read.csv('2018.csv') %>% rename( Country = 'Country.or.region')
+
+top_happiest <- data2 %>% select(Country, Score) %>% head(5)
+top_happiest_plot <- ggplot(data = top_happiest, aes(x = fct_reorder(Country,desc(Score)), y=Score, fill = fct_reorder(Country,desc(Score)), label = Score))+
+  geom_bar(stat = 'identity')+
+  labs(title = "Happiest countries", x = "Country Name", y = "Happiness Score")+
+  geom_text(size = 4, position = position_stack(vjust = 0.95),color="white")+ labs(fill = "Country")+ theme(axis.text.x = element_blank())
+
+icu_happiness <- data2 %>% select(Country, Score) %>% filter(Country == 'India' | 
+                                                               Country == 'Canada'|
+                                                             Country == 'United States')
+
+icu_happiness_plot <- ggplot(data = icu_happiness,  aes(x = fct_reorder(Country,desc(Score)), y=Score, fill = fct_reorder(Country,desc(Score)), label = Score))+
+  geom_bar(stat = 'identity')+
+  labs(title = "Happiness in India, Canada and US", x = "Country Name", y = "Happiness Score")+
+  geom_text(size = 4, position = position_stack(vjust = 0.95),color="white")+
+  labs(fill = "Country")+ theme(axis.text.x = element_blank())
+
+grid.arrange(top_happiest_plot,icu_happiness_plot,ncol=2)
+
+```
+
+We considered the average self-perceived happiness score of a country as a metric. Since all of the indicators in the HIR were self-perceived, we categorized them as Subjective. In contrast, the indicators in the WDI were Objective, since they were measurable numbers. Then, we took the Happiness Score as our dependant variable and again ran various models once with Subjective indicators, once with Objective indicators and once with a combination of both. The results are as follows: 
+
+
+!['Predictors of happiness'](HappinessPredictors.png)
+
+Details of these models:
+
+1) Objective Predictors (From World Development indicators dataset)
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+data_whole <- inner_join(data1,data2, by= 'Country')
+
+happiness_index_objective <- lm(Score ~ `NY.GDP.PCAP.CD`+ `SL.UEM.TOTL.ZS` + `IC.TAX.TOTL.CP.ZS`,data_whole)
+summary(happiness_index_objective)
+``` 
+
+2) Subjective Predictors (From Happiness Index dataset)
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+happiness_index_subjective <- lm(Score ~ as.numeric(Perceptions.of.corruption) + Freedom.to.make.life.choices+ Generosity+ Social.support,data_whole)
+summary(happiness_index_subjective)
+```
+
+3) Combination of objective and subjective predictors
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+
+
+happiness_index_predictors <- lm(Score ~ as.numeric(Perceptions.of.corruption) + `NY.GDP.PCAP.CD`+ `SL.UEM.TOTL.ZS` + `IC.TAX.TOTL.CP.ZS`+ Freedom.to.make.life.choices+ Generosity+ Social.support,data_whole)
+summary(happiness_index_predictors)
+
+```
+
+We can see that when the indicators from World development indicators and Happiness index report are combined, the results get even better. This model explains 76% variability in Happiness score. We can safely say that Happiness is indeed a combination of perceived factors and objective indicators.
+
+
+<center> <h1 style="color:grey; font-size:300%" id="limitations_future_work"> Limitations and future work </h1> </center>
+
+
+One of the shortcomings of our project is the lack of data. Many countries don’t provide some data at all, some data wasn’t available in the earlier years, some data is collected only once in a few years and these factors make it hard to implement deep analysis, especially machine learning. Because of the volume of the missing data, imputing missing data wasn’t a possibility either. The other issue is that the data is static. Some of the indicators mentioned in the data have values that change or are updated regularly, but the dataset as a whole is updated quarterly. Although most of the data won’t be affected by dynamic updating, it certainly could be a way to get much better outputs and tracking the progress of countries would be much easier.
+
+Due to the size of the dataset, we were almost certain that we wouldn’t be able to cover all of it. There were some domains that we couldn’t cover and even within the domains we did, there could be some indicators we missed that could have given revealing results or enhanced our statistical analyses. There is a lot more that can be done with this dataset. People with expertise in specific domains such as Economy, health or gender studies can analyse that part of data substantially better than we did and the results they find would be much more accurate. Not only would they be able to explain the data well, but they would also be able to do a lot in terms of practical suggestions of solutions in the domains. 
+
+We intended to show rest of our work (Graphs, tests that didn't give good results, tests where we later realized that the data isn't sufficient) at the end of the report in the appendix, but there is a lot of content in this section, so we decided to not show it in the report. We have echod the code in the code file at the end. 
+
+```{r include=FALSE}
+
+
+
+#Appendix
+
+#Proportion of people spending 25+ % of income on healthcare, top countries in 2016
+public_expenditure_ranked <- data_proper_health %>% 
+  filter(year == '2016') %>% 
+  arrange(desc(`SH.UHC.OOPC.25.ZS`))
+top_10_public_expenditure <- data_proper_health %>%
+  filter(year == '2016') %>% 
+  arrange(desc(`SH.UHC.OOPC.25.ZS`)) %>% 
+  head(10)
+ggplot(data = top_10_public_expenditure, aes(x=fct_reorder(`Country Name`,desc(`SH.UHC.OOPC.25.ZS`)), y=`SH.UHC.OOPC.25.ZS`, fill= `SH.UHC.OOPC.25.ZS`)) + 
+  geom_bar(stat='identity') +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5)) +
+  xlab("Country") + ylab("Proportion of people") +
+  ggtitle("Proportion of people spending 25+ % of income on healthcare")+
+  labs(fill="Proportion of people")
+
+```
+
+``` {r include=FALSE}
+#Appendix
+#Countries with highest population growth percentage currently
+population_growth_ranked <- data_proper_health %>% 
+  filter(year == '2018') %>% 
+  arrange(desc(`SP.POP.GROW`))
+top_10_population_growth <- data_proper_health %>% 
+  filter(year == '2018') %>% 
+  arrange(desc(`SP.POP.GROW`)) %>% 
+  head(10)
+ggplot(data = top_10_population_growth, aes(x=fct_reorder(`Country Name`,desc(`SP.POP.GROW`)), y=`SP.POP.GROW`, fill= `SP.POP.GROW`)) + 
+  geom_bar(stat='identity') +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5)) +
+  xlab("Country") + ylab("Population growth in %") +
+  ggtitle("Countries with highest population growth percentage in 2018")+
+  labs(fill="Population Growth in %")
+```
+
+
+```{r include=FALSE, warning=FALSE, message=FALSE}
+
+#Appendix
+#Countries spending highest on education
+edu_spendings <- data_proper %>% filter(`year` == '2018') %>% 
+  arrange(desc(`NY.ADJ.AEDU.GN.ZS`)) %>% select(`year`,`Country Name`,`NY.ADJ.AEDU.GN.ZS`) %>% head(10) 
+ggplot(data = edu_spendings, aes(x=fct_reorder(`Country Name`, desc(`NY.ADJ.AEDU.GN.ZS`)),y=`NY.ADJ.AEDU.GN.ZS`))+
+  geom_bar(stat='identity') +
+  xlab("Country") + ylab("Education Spendings") + 
+  labs(title="Countries spending highest on education in 2018") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position = "none")
+#ggplot(data = edu_spendings)
+
+# GDP per employed person
+
+top_10_gpep <- data_proper_spal %>% filter(year == '2019') %>% arrange(desc(`SL.GDP.PCAP.EM.KD`)) %>% head(10)
+ggplot(data = top_10_gpep, aes(x=`Country Name`, y=`SL.GDP.PCAP.EM.KD`)) + geom_bar(stat='identity')+
+  ggtitle("GDP per employed person in 2019") +
+  xlab("Country") + ylab("GDP") + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  theme(legend.position = "none")
+  
+
+#GDP over the years for ICU 
+
+icu_gpep <- data_proper_spal %>% filter(`Country Name` == 'India' | `Country Name` == 'Canada'| `Country Name` == 'United States' | `Country Name` == 'World')%>%
+  select(`year`,`Country Name`,`SL.GDP.PCAP.EM.KD`) %>% filter(`year` > 2000)
+ggplot(data = icu_gpep, aes(x = `year`, y = `SL.GDP.PCAP.EM.KD`, group = `Country Name`)) + geom_line(aes(color= `Country Name`), size=1) +
+  ggtitle("GDP of India,Canada,USA & World over the years") +
+  xlab("Year") + ylab("GDP") +
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+       axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) 
+ 
+
+
+
+#Total unemployment rate
+
+unemployment_ranked <- data_proper_spal %>% filter(year == '2019') %>% arrange(desc(`SL.UEM.TOTL.ZS`))
+top_10_unemployment <- data_proper_spal %>% filter(year == '2019') %>% arrange(desc(`SL.UEM.TOTL.ZS`)) %>% head(10)
+ggplot(data = top_10_unemployment, aes(x=fct_reorder(`Country Name`, desc(`SL.UEM.TOTL.ZS`)),y=`SL.UEM.TOTL.ZS`, fill = `SL.UEM.TOTL.ZS`)) + geom_bar(stat='identity')+
+xlab("Country") + ylab("Unemployment Rate") + 
+ggtitle("Unemployment Rate in 2019") +
+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+      panel.background = element_blank(), axis.line = element_line(colour = "black"),
+      plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+theme(legend.position = "none")
+
+#Youth Unemployment rate 
+
+youth_unemployment_ranked <- data_proper_spal %>% filter(year == '2019') %>% arrange(desc(`SL.UEM.1524.ZS`))
+top_10_youth_unemployment <- data_proper_spal %>% filter(year == '2019') %>% arrange(desc(`SL.UEM.1524.ZS`)) %>% head(10)
+ggplot(data = top_10_youth_unemployment, aes(x=fct_reorder(`Country Name`, desc(`SL.UEM.1524.ZS`)),y=`SL.UEM.1524.ZS`, fill = `SL.UEM.1524.ZS`)) + 
+ geom_bar(stat='identity')+
+ xlab("Country") + ylab("GDP") + 
+ ggtitle("Youth Unemployment Rate in 2019") +
+ theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  theme(legend.position = "none")
+
+```
+
+``` {r include=FALSE}
+#top 10 countries with highest literacy rate.
+top_10_literacy <- data_proper_edu %>%
+  filter(`year`==2017) %>%
+  filter(!(`Country Name` %in% non_country_names)) %>%
+  select(`year`,`Country Name`,`SE.ADT.LITR.ZS`) %>%
+  arrange(desc(`SE.ADT.LITR.ZS`)) %>%
+  head(10)
+ggplot(data = top_10_literacy, aes(x=fct_reorder(`Country Name`,desc(`SE.ADT.LITR.ZS`)), y=`SE.ADT.LITR.ZS`, fill=`SE.ADT.LITR.ZS`,label=`SE.ADT.LITR.ZS`)) +
+  geom_bar(stat='identity') +
+  ggtitle(" Countries with highest literacy rate in 2017") +
+  geom_text(size = 4, position = position_stack(vjust = 0.95),color="white")+
+  xlab("Country") + ylab("Literacy Rate") +
+ labs(fill = "Literacy Rate") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(vjust = 1, hjust=1))
+
+#Compulsory education
+comp_edu <- data_proper_edu %>%
+  filter(`year` == '2018') %>%
+  select(`year`,`Country Name`,`SE.COM.DURS`) %>%
+  arrange(desc(`SE.COM.DURS`)) %>%
+  head(10)
+comp_edu
+```
+
+``` {r include=FALSE}
+
+#countries spending the most in Research and  development
+rsrch_exp <- data_proper_all %>%
+  select(`year`, `Country Name`, `GB.XPD.RSDV.GD.ZS`) %>%
+  filter(`year` == 2017) %>%
+  arrange(desc(`GB.XPD.RSDV.GD.ZS`)) %>%
+  head(10)
+rsrch_exp
+
+#Correlation b/w  imports/exports of goods and services and expenditure on R&D
+cor.test(data_proper_all$BM.GSR.GNFS.CD, data_proper_all$IQ.WEF.CUST.XQ, method = 'pearson')
+cor.test(data_proper_all$BX.GSR.GNFS.CD, data_proper_all$IQ.WEF.CUST.XQ, method = 'pearson')
+cor.test(data_proper_all$ST.INT.ARVL, data_proper_all$IS.AIR.DPRT, method = 'pearson')
+
+# AIRPORTS
+
+#top 20 countries acc. to number of departures worldwide in 2018
+top_20_air_dpt <- data_proper_infra %>% 
+  filter(`year` == '2018') %>% 
+  filter(!(`Country Name` %in% non_country_names)) %>%
+  arrange(desc(`IS.AIR.DPRT`)) %>% 
+  select(`Country Name`, `year`, `IS.AIR.DPRT`)
+top_20_air_dpt
+
+#Railways
+
+#top 20 countries acc. total km of rail lines in 2018
+top_20_rail_lines <- data_proper_infra %>% 
+  filter(`year` == '2018') %>% 
+  arrange(desc(`IS.RRS.TOTL.KM`)) %>% 
+  select(`Country Name`, `year`, `IS.RRS.TOTL.KM`) %>%
+  head(20)
+top_20_rail_lines
+ggplot(data = top_20_rail_lines, aes(x=fct_reorder(`Country Name`,desc(`IS.RRS.TOTL.KM`)), y=`IS.RRS.TOTL.KM`, fill=`IS.RRS.TOTL.KM`)) + 
+  geom_bar(stat='identity') +
+  ggtitle("Countries with largest rail lines") +
+  xlab("Country") + ylab("Kilometers") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),legend.position = "none") 
+
+
+#internet usage for developed countries
+int_usg_dvlpd <- developed_countries_infra %>% 
+  filter(`year`> 2000) %>%
+  arrange(desc(`IT.NET.USER.ZS`)) %>% 
+  select(`year`, `Country Name`, `IT.NET.USER.ZS`)
+ggplot(data=int_usg_dvlpd, aes(x=`year`,y=`IT.NET.USER.ZS`,group=`Country Name`)) +
+  geom_line(aes(color=`Country Name`))
+
+```
+
+
+``` {r include=FALSE}
+
+#top 20 countries with most debt in 2016
+top_20_debt <-  data_proper_priv_pub %>%
+  filter(`year` == '2016') %>% 
+  mutate("Debt_in_Trillions"= `GC.DOD.TOTL.CN`/1000000000000) %>%
+  arrange(desc(Debt_in_Trillions)) %>% 
+  select(`year`,`Country Name`,`Debt_in_Trillions`) %>%
+  head(9)
+ggplot(data = top_20_debt, aes(x=fct_reorder(`Country Name`,`Debt_in_Trillions`), y=`Debt_in_Trillions`, fill=`Country Name`)) + 
+  geom_bar(stat='identity') + 
+  xlab("Country") + ylab("Debt in Trillions(USD)") + 
+  labs(title = "Countries under most debt in 2016.") +
+  coord_flip()+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none",
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(vjust = 1, hjust=1)) +
+  scale_y_continuous(breaks = c(7, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000))
+
+#average debt of developed countries
+avg_debt_dvlpd<- developed_countries_priv_pub %>%
+  group_by(`Country Name`) %>%
+  summarise(avg_debt= mean(`GC.DOD.TOTL.CN`,na.rm = TRUE)) %>%
+  mutate("Avg_debt_in_Billions"=avg_debt/10000000000) %>%
+  arrange(desc(Avg_debt_in_Billions)) %>%
+  head(14)
+avg_debt_dvlpd
+
+#social contributions
+top_20_socl_cont<- data_proper_priv_pub %>%
+  select(`year`,`Country Name`, `GC.REV.SOCL.ZS`) %>%
+  filter(`year` == 2017) %>%
+  arrange(desc(`GC.REV.SOCL.ZS`))%>%
+  head(20)
+ggplot(data = top_20_socl_cont, aes(x=fct_reorder(`Country Name`,`GC.REV.SOCL.ZS`), y=`GC.REV.SOCL.ZS`, fill=`Country Name`)) + 
+  geom_bar(stat='identity') + 
+  xlab("Country") + ylab("Social Contributions") + 
+  labs(title = "Countries with highest social contributions in 2017.") +
+  coord_flip()+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none",
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(vjust = 1, hjust=1)) +
+  scale_y_continuous(breaks = c(10,15,20,25,30,35,40,45,50,55,60))
+
+top_20_socl_cont_dvlpd<- developed_countries_priv_pub %>%
+  select(`year`,`Country Name`, `GC.REV.SOCL.ZS`) %>%
+  filter(`year` == 2017) %>%
+  arrange(desc(`GC.REV.SOCL.ZS`))%>%
+  head(20)
+top_20_socl_cont_dvlpd
+ 
+#tax revenue of developed countries and world
+tax_dvlpd <- developed_countries_priv_pub %>%
+  select(`year`, `Country Name`, `GC.TAX.TOTL.GD.ZS`) %>%
+  filter(`year` == 2018) %>%
+  arrange(desc(`GC.TAX.TOTL.GD.ZS`)) 
+tax_dvlpd
+ggplot(data = tax_dvlpd, aes(x=fct_reorder(`Country Name`,desc(`GC.TAX.TOTL.GD.ZS`)), y=`GC.TAX.TOTL.GD.ZS`, fill=`Country Name`)) + 
+  geom_bar(stat='identity') + 
+  xlab("Country") + ylab("Tax revenue(%of GDP") + 
+  labs(title = "Countries with highest tax revenue.") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none",
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle=45,vjust = 1, hjust=1)) +
+  scale_y_continuous(breaks = c(10,15,20,25,30,35,40,45,50,55,60))
+
+#tax revenue of india and world over the years 1974-2017
+tax_india <- data_proper_priv_pub %>%
+  select(`year`, `Country Name`, `GC.TAX.TOTL.GD.ZS`) %>%
+  filter(`year`>1974) %>%
+  filter(`Country Name`=="India" | `Country Name` == "World")
+ggplot(data = tax_india, aes(x = `year`, y = `GC.TAX.TOTL.GD.ZS`, group = `Country Name`))+
+  geom_line(aes(color= `Country Name`), size=1) +
+  xlab("Year")+ ylab("Tax revenue(%of GDP") +
+  ggtitle("Tax revenue of India and World over the years") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle=45,vjust = 1, hjust=1)) 
+
+#compensation of employees in india,world,us and canada
+emp_comp_icwu <- data_proper_priv_pub %>%
+  select(`year`, `Country Name`, `GC.XPN.COMP.ZS`) %>%
+  filter(`year`>2000)  %>%
+  filter(`Country Name`=='India' |`Country Name`=='United States' | `Country Name`=='World' | `Country Name`=='Canada') 
+ggplot(data = emp_comp_icwu, aes(x = `year`, y = `GC.XPN.COMP.ZS`, group = `Country Name`))+ 
+  geom_line(aes(color= `Country Name`), size=1) +
+  xlab("Year") + ylab("Compensation of employees(% of expense)") +
+  ggtitle("Tax revenue of India and World over the years") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle=45,vjust = 1, hjust=1)) 
+
+emp_comp_top_20 <-  data_proper_priv_pub %>%
+  select(`year`, `Country Name`, `GC.XPN.COMP.ZS`) %>%
+  filter(`year`==2018)  %>%
+  arrange(desc(`GC.XPN.COMP.ZS`)) %>%
+  head(20)
+emp_comp_top_20
+
+emp_comp_dvlpd <- developed_countries_priv_pub %>%
+  select(`year`, `Country Name`, `GC.XPN.COMP.ZS`) %>%
+  filter(`year`>2000)
+
+#expense of developed countries in 2018
+exp_dvlpd <- developed_countries_priv_pub %>%
+  select(`year`, `Country Name` , `GC.XPN.TOTL.GD.ZS`) %>%
+  filter(`year`==2018) %>%
+  arrange(desc(`GC.XPN.TOTL.GD.ZS`)) %>%
+  head(10)
+exp_dvlpd
+ggplot(data = exp_dvlpd, aes(x=fct_reorder(`Country Name`,desc(`GC.XPN.TOTL.GD.ZS`)), y=`GC.XPN.TOTL.GD.ZS`, fill=`Country Name`)) + 
+  geom_bar(stat='identity') + 
+  xlab("Country") + ylab("Expense(% of GDP)") + 
+  labs(title = "Developed countries with highest expense.") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none",
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle=45,vjust = 1, hjust=1))
+
+exp_top <- data_proper_priv_pub %>%
+  select(`year`, `Country Name` , `GC.XPN.TOTL.GD.ZS`) %>%
+  filter(`year`==2018) %>%
+  filter(!(`Country Name` %in% non_country_names)) %>%
+  arrange(desc(`GC.XPN.TOTL.GD.ZS`)) %>%
+  head(10)
+ggplot(data = exp_top, aes(x=fct_reorder(`Country Name`,desc(`GC.XPN.TOTL.GD.ZS`)), y=`GC.XPN.TOTL.GD.ZS`, fill=`Country Name`)) + 
+  geom_bar(stat='identity') + 
+  xlab("Country") + ylab("Expense(% of GDP)") + 
+  labs(title = "Countries with highest expense.") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none",
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle=45,vjust = 1, hjust=1))
+
+
+
+#human capital index
+hci_top_20 <- data_proper_priv_pub %>%
+  select(`year`, `Country Name`, `HD.HCI.OVRL`) %>%
+  filter(`year`==2018) %>%
+  arrange(desc(`HD.HCI.OVRL`)) %>%
+  head(20)
+hci_top_20
+ggplot(data = hci_top_20, aes(x=fct_reorder(`Country Name`,desc(`HD.HCI.OVRL`)), y=`HD.HCI.OVRL`, fill=`Country Name`)) + 
+  geom_bar(stat='identity') + 
+  xlab("Country") + ylab("Human Capital Index(0-1)") + 
+  labs(title = "Countries with highest expense.") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none",
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle=45,vjust = 1, hjust=1))
+
+###############################################################################################
+
+#Private Sector
+
+#bribery incidents 
+brib_top_20 <- data_proper_priv_pub %>%
+  select(`year`,`Country Name`, `IC.FRM.BRIB.ZS`) %>%
+  filter(`year`==2016) %>%
+  arrange(desc(`IC.FRM.BRIB.ZS`)) %>%
+  head(18)
+brib_top_20
+ggplot(data = brib_top_20, aes(x=fct_reorder(`Country Name`,desc(`IC.FRM.BRIB.ZS`)), y=`IC.FRM.BRIB.ZS`)) + 
+  geom_bar(stat='identity') +
+  ggtitle("Countries with most bribery incidents.") +
+  xlab("Country") + ylab("Education Expenditure(% of GDP)") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "None",
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) 
+
+
+#cheater firms
+frd_firms <- data_proper_priv_pub %>% 
+  filter(!(`Country Name` %in% non_country_names)) %>%
+  select(`year`,`Country Name`, `IC.FRM.INFM.ZS`) %>%
+  arrange(desc(`IC.FRM.INFM.ZS`)) %>%
+  head(20)
+frd_firms
+ggplot(data = frd_firms, aes(x=fct_reorder(`Country Name`,desc(`IC.FRM.INFM.ZS`)), y=`IC.FRM.INFM.ZS`, fill=`IC.FRM.INFM.ZS`)) + 
+  geom_bar(stat='identity') +
+  ggtitle(" Countries with highest bribery incidents.") +
+  xlab("Country") + ylab("Percent of firms experiencing bribery.") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) 
+
+#military
+
+#total armed forces
+total_armed <- data_proper_priv_pub %>%
+  select(`year`, `Country Name` , `MS.MIL.TOTL.P1`) %>%
+  filter(!(`Country Name` %in% non_country_names)) %>%
+  filter(`year` >1960) %>% 
+  filter(`Country Name`=='India') %>%
+  arrange(desc(`MS.MIL.TOTL.P1`))
+total_armed
+
+mili_exp_gdp <- data_proper_priv_pub %>%
+  select(`year`, `Country Name` , `MS.MIL.XPND.GD.ZS`) %>%
+  filter(!(`Country Name` %in% non_country_names)) %>%
+  filter(`year`==2018) %>%
+  arrange(desc(`MS.MIL.XPND.GD.ZS`)) %>% rename('Military expenditure (% of GDP)' = `MS.MIL.XPND.GD.ZS`)
+mili_exp_gdp
+
+
+btl_dth_am_bmb <- data_proper_priv_pub %>%
+  select(`year`, `Country Name` , `VC.BTL.DETH`) %>%
+  filter(`Country Name` == "Iraq" | `Country Name` == "Afghanistan" | `Country Name` == "Syrian Arab Republic" |
+           `Country Name` == "Pakistan" |`Country Name` == "Somalia" | `Country Name` == "Yemen") %>%
+  filter(`year`> 1990)
+ggplot(data = btl_dth_am_bmb, aes(x = `year`, y = `VC.BTL.DETH`, group = `Country Name`))+ 
+  geom_line(aes(color= `Country Name`))
+
+btl_dth_am_bmb_ob <- data_proper_priv_pub %>%
+  select(`year`, `Country Name` , `VC.BTL.DETH`) %>%
+  filter(`Country Name` == "Iraq" | `Country Name` == "Afghanistan" | `Country Name` == "Syrian Arab Republic" |
+           `Country Name` == "Pakistan" |`Country Name` == "Somalia" | `Country Name` == "Yemen") %>%
+  filter(`year`>= 2009 & `year`<=2016)
+ggplot(data = btl_dth_am_bmb_ob, aes(x = `year`, y = `VC.BTL.DETH`, group = `Country Name`))+ 
+  geom_line(aes(color= `Country Name`)) +
+  ylab("Number of Deaths") +
+  ggtitle("Battle Deaths under Obama in his tenure")
+
+btl_dth_am_bmb_dt <- data_proper_priv_pub %>%
+  select(`year`, `Country Name` , `VC.BTL.DETH`) %>%
+  filter(`Country Name` == "Iraq" | `Country Name` == "Afghanistan" | `Country Name` == "Syrian Arab Republic" |
+           `Country Name` == "Pakistan" |`Country Name` == "Somalia" | `Country Name` == "Yemen") %>%
+  filter(`year`> 2016)
+ggplot(data = btl_dth_am_bmb_dt, aes(x = `year`, y = `VC.BTL.DETH`, group = `Country Name`))+ 
+  geom_line(aes(color= `Country Name`))
+
+btl_dth_am_bmb_bush <- data_proper_priv_pub %>%
+  select(`year`, `Country Name` , `VC.BTL.DETH`) %>%
+  filter(`Country Name` == "Iraq" | `Country Name` == "Afghanistan" | `Country Name` == "Syrian Arab Republic" |
+           `Country Name` == "Pakistan" |`Country Name` == "Somalia" | `Country Name` == "Libya"  ) %>%
+  filter(`year`>= 1999 & `year`<=2006)
+ggplot(data = btl_dth_am_bmb_bush, aes(x = `year`, y = `VC.BTL.DETH`, group = `Country Name`))+ 
+  geom_line(aes(color= `Country Name`))
+```
+
+
+<center> <h1 style="color:grey; font-size:300%" id="references"> References </h1> </center>
+
+
+1) https://datacatalog.worldbank.org/dataset/world-development-indicators
+
+2) https://worldhappiness.report/
+
+3) https://www.kaggle.com/kmravikumar/how-far-is-china-ahead-of-india
+
+4) https://www.kaggle.com/smondal93/exploring-global-inequality-and-growth
