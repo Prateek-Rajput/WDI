@@ -57,4 +57,10 @@ Then we wanted to see what factors impact the UHC index the most, so we ran regr
 
 ![image](https://user-images.githubusercontent.com/46672370/119706192-a4a1c800-be27-11eb-839a-95921302a853.png)
 
+![image](https://user-images.githubusercontent.com/46672370/119706276-c307c380-be27-11eb-8f5b-163c6faa7633.png)
+
+Running a Linear model with Universal Health Coverage Index as the dependant variable and Life expectancy and Doctors per 1000 people as predictors, gave us an adjusted R-squared of 0.84 with 663.9 F-statistic on 2 and 250 df (p < 0.0001). 
+The value of adjusted r-squared was 0.84 which means that 84% of variability in UHC index is explained by our selected predictors.
+Our focus then was the population growth problem. We started by seeing the population growth of world’s most populated countries India and China and compared their growth to the world.
+
 
