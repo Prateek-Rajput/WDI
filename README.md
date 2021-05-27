@@ -172,3 +172,98 @@ Then we wanted to see the correlation between the percent of youth educated and 
 While seeing the indicators available in infrastructure sector, we were particularly intrigued by the percent of population using internet. So, we checked it for the years after 2000 in India. And an interesting thing was found that in the early 2000s, almost 0% of the population in India was using internet. The number grew gradually and reached over 20% in 2014, then dropped a bit in the following year. But after 2015, a huge spike can be seen, a 15% increase was experienced. The reason behind the growth was the introduction of a telecommunication company named Jio. The very first year of the company, a usage of 2gb of data was given to everyone who bought the sim at no cost for a whole year.
 
 ![download](https://user-images.githubusercontent.com/46672370/119896058-7f3aba00-bf0c-11eb-8185-43edc61f93f9.gif)
+
+### Europe's supremacy in infrastructure 
+
+Another thing that we found in Infrastructure was that the European developed countries outperformed other developed countries of the world in the infrastructure sector.
+In efficiency of customs procedure, countries like Finland(6.3), Netherlands(6.3) Sweden(5.6), United Kingdom(5.5), Ireland(5.4), Switzerland(5.4) and Austria(5.3) have the highest ratings.This indicator is a rating given by the business executives of the country according to their perspective on their country's efficiency on customs procedure.
+For quality of port infrastructure too, European developed countries were among the top 10. With having rating above 5 out of 7.
+
+![image](https://user-images.githubusercontent.com/46672370/119896363-ea848c00-bf0c-11eb-91f9-de2398430a45.png)
+
+![image](https://user-images.githubusercontent.com/46672370/119896394-f40df400-bf0c-11eb-9e81-f3393988adb7.png)
+
+## Public and Private Sector
+
+The first thing that we analyzed in this domain was the debts of countries, but we were specifically interested in India. Then we compared the debt of India with United States of America. We saw the progression of debt of both of the countries over the years. 
+In the first graph, it can be seen that the debt of India has been rising on a very fast pace each year. It started with a bit above 1 trillion USD in 1991 and by the year 2015, it reached above 55 trillion USD. The debt of USA has also been rising over the years, but it is not as huge amount as India and also the progression is not that large. 
+After seeing the debt, we then calculated and added the deficit for each year. We noticed a huge spike in the deficit of USA in the year 2001. On researching about it, we came to know that there was a huge tax cut in USA in 2001 and also the military expenditure of USA was very high.
+
+![image](https://user-images.githubusercontent.com/46672370/119896489-1273ef80-bf0d-11eb-84a7-88cb8f327a12.png)
+
+![image](https://user-images.githubusercontent.com/46672370/119896532-2586bf80-bf0d-11eb-874c-e61ead77854e.png)
+
+The next thing was to check the expenditure of government.For this, we checked it for the high income category to get a general idea on how much a country with a good economy would spend. We also considered World average, United States of America, Canada and India for this one, to get a diverse outcome. 
+
+In 2017,the high income countries spend more than that of the world average and as expected, USA's expenditure was also more than Canada and India.
+
+![image](https://user-images.githubusercontent.com/46672370/119896578-3800f900-bf0d-11eb-9464-3cb4933b644d.png)
+
+While exploring the indicators for this sector, we came around the total tax rate of a country and decided to analyze the same for the different country categories and compared it with the World average too. The tax rate of the countries with better economy have a fairly stable and low tax rate over the years but it's not the same with low income countries. As wealthy a country gets, the tax rate also decreases accordingly. 
+
+![image](https://user-images.githubusercontent.com/46672370/119896629-48b16f00-bf0d-11eb-8ddc-a9966b494295.png)
+
+### Drop in Canada's corporate tax rates 
+
+One interesting high income country was Canada because we noticed a huge drop in the tax rate in the year 2009. So after researching why it happened, we came to know that due to recession, to keep up with the world market, Canada had to lower the tax rate to almost half(42% - 22%). Since then, it has been a bit stable and is increasing in the recent years.
+
+![image](https://user-images.githubusercontent.com/46672370/119896737-71d1ff80-bf0d-11eb-8e77-395ec17a29bc.png)
+
+### Do better economies have less bribery incidences?
+
+We came across an interesting indicator that recorded that how much percent of firms were offered bribe at least once in a country.
+So, we then delved into the indicator and noticed that better economies had less bribery incidences. Therefore, to confirm it, we ran a Pearson correlation test between bribery incidences and GDP of a country. The value for the coefficient was -0.45 suggesting that better economies do experience less bribery incidences.
+
+![image](https://user-images.githubusercontent.com/46672370/119896805-8a421a00-bf0d-11eb-8f7e-f3a5d4ee6340.png)
+
+### Predictors of GDP 
+
+After observing all the data and finding interesting models and correlations, we wanted to see if we can find some definitive facts about how human well being can be achieved. Firstly, we used GDP per capita as the metric of human well being and checked which specific factors affect it the most. We ran multiple models with a combination of different predictors but the one with highest value of adjusted r-squared was the model with a combination of UHC index, Bachelor’s education attainment rate and unemployment rate. Out of these three, UHC index and Educational attainment were the most significant ones. This makes sense as Health and Education are considered really important and basis for the progress of a country.
+
+![image](https://user-images.githubusercontent.com/46672370/119896889-aa71d900-bf0d-11eb-87a7-4e3a4525b7af.png)
+
+The adjusted r-squared for this was 0.56. UHC index, Bachelor's attainment rate and total unemployment rate can explain 56% of variability in GDP per capita.
+
+### What Predicts Happiness? 
+
+Though GDP is certainly a really important factor of well being of a country, we decided to go a step further and echo the Happiness index report dataset. Happiness Index Report consists of subjective data where questions are asked to people to get their perceived answers.  The dataset has Happiness Score, Freedom to make life choices, Generosity, Social support, perception of corruption. Here is a brief look at the dataset:
+
+![image](https://user-images.githubusercontent.com/46672370/119896960-c5dce400-bf0d-11eb-9b6b-6a7e59b14e70.png)
+
+We considered the average self-perceived happiness score of a country as a metric. Since all of the indicators in the HIR were self-perceived, we categorized them as Subjective. In contrast, the indicators in the WDI were Objective, since they were measurable numbers. Then, we took the Happiness Score as our dependant variable and again ran various models once with Subjective indicators, once with Objective indicators and once with a combination of both. The results are as follows: 
+
+![image](https://user-images.githubusercontent.com/46672370/119897071-e73dd000-bf0d-11eb-980b-f74c45837049.png)
+
+Details of these models:
+
+1) Objective Predictors (From World Development indicators dataset)
+
+![image](https://user-images.githubusercontent.com/46672370/119897138-fcb2fa00-bf0d-11eb-9aed-34e04f9a0f36.png)
+
+2) Subjective Predictors (From Happiness Index dataset)
+
+![image](https://user-images.githubusercontent.com/46672370/119897194-0e949d00-bf0e-11eb-8a34-4e3c401dc521.png)
+
+3) Combination of objective and subjective predictors
+
+![image](https://user-images.githubusercontent.com/46672370/119897252-22400380-bf0e-11eb-9c5b-1eff56afd10c.png)
+
+We can see that when the indicators from World development indicators and Happiness index report are combined, the results get even better. This model explains 76% variability in Happiness score. We can safely say that Happiness is indeed a combination of perceived factors and objective indicators.
+
+### Limitations and future work 
+
+One of the shortcomings of our project is the lack of data. Many countries don’t provide some data at all, some data wasn’t available in the earlier years, some data is collected only once in a few years and these factors make it hard to implement deep analysis, especially machine learning. Because of the volume of the missing data, imputing missing data wasn’t a possibility either. The other issue is that the data is static. Some of the indicators mentioned in the data have values that change or are updated regularly, but the dataset as a whole is updated quarterly. Although most of the data won’t be affected by dynamic updating, it certainly could be a way to get much better outputs and tracking the progress of countries would be much easier.
+
+Due to the size of the dataset, we were almost certain that we wouldn’t be able to cover all of it. There were some domains that we couldn’t cover and even within the domains we did, there could be some indicators we missed that could have given revealing results or enhanced our statistical analyses. There is a lot more that can be done with this dataset. People with expertise in specific domains such as Economy, health or gender studies can analyse that part of data substantially better than we did and the results they find would be much more accurate. Not only would they be able to explain the data well, but they would also be able to do a lot in terms of practical suggestions of solutions in the domains. 
+
+We intended to show rest of our work (Graphs, tests that didn't give good results, tests where we later realized that the data isn't sufficient) at the end of the report in the appendix, but there is a lot of content in this section, so we decided to not show it in the report. We have echod the code in the code file at the end. 
+
+## References
+
+1) https://datacatalog.worldbank.org/dataset/world-development-indicators
+
+2) https://worldhappiness.report/
+
+3) https://www.kaggle.com/kmravikumar/how-far-is-china-ahead-of-india
+
+4) https://www.kaggle.com/smondal93/exploring-global-inequality-and-growth
